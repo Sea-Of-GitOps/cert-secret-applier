@@ -1,0 +1,15 @@
+certbot certonly --manual --preferred-challenges dns \
+  --manual-auth-hook \
+  [[ "$(curl -s "https://www.duckdns.org/update?domains=${DUCKDNS_DOMAIN%.duckdns.org}&token=${DUCKDNS_TOKEN}&txt=${CERTBOT_VALIDATION}")" = "OK" ]] \
+  --manual-cleanup-hook \
+  [[ "$(curl -s "https://www.duckdns.org/update?domains=${DUCKDNS_DOMAIN%.duckdns.org}&token=${DUCKDNS_TOKEN}&txt=${CERTBOT_VALIDATION}&clear=true")" = "OK" ]] \
+  -d $LETSENCRYPT_DOMAIN \
+  ${CHAIN_PARAM[@]} $EMAIL_PARAM \
+  --agree-tos --manual-public-ip-logging-ok --keep $TEST_PARAM"
+
+
+  https://eff-certbot.readthedocs.io/en/stable/using.html#manual
+  https://eff-certbot.readthedocs.io/en/stable/using.html#hooks
+
+
+  https://github.com/infinityofspace/certbot_dns_duckdns
