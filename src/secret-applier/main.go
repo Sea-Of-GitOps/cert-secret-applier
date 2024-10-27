@@ -14,10 +14,10 @@ import (
 
 // Definisci percorsi come costanti globali
 const (
-    certBasePath       = "./etc/letsencrypt/live/"
-    namespaceFilePath  = "./var/run/secrets/kubernetes.io/serviceaccount/namespace"
-    caCertFilePath     = "./var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    tokenFilePath      = "./var/run/secrets/kubernetes.io/serviceaccount/token"
+    certBasePath       = "/etc/letsencrypt/live/"
+    namespaceFilePath  = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+    caCertFilePath     = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    tokenFilePath      = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 type Secret struct {
@@ -85,10 +85,6 @@ func K8sHTTPRequest(client *http.Client, method, url string, jsonData []byte) (*
 }
 
 func main() {
-    os.Setenv("DOMAIN", "www.example.com")
-    os.Setenv("KUBERNETES_SERVICE_HOST", "127.0.0.1")
-    os.Setenv("KUBERNETES_SERVICE_PORT_HTTPS", "44093")
-    
     domain := os.Getenv("DOMAIN")
     kubernetesHost := os.Getenv("KUBERNETES_SERVICE_HOST")
     kubernetePort := os.Getenv("KUBERNETES_SERVICE_PORT_HTTPS")
