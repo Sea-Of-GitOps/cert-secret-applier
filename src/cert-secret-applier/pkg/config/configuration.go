@@ -18,7 +18,7 @@ type Config struct {
 }
   
 type Duckdns struct {
-	Domain string   `mapstructure:"string"`
+	Domain string   `mapstructure:"domain"`
 }
 
 type Kubernetes struct {
