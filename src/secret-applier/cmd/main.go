@@ -116,6 +116,7 @@ func main() {
 
     resp, err := K8sHTTPRequest(client, "GET", url+domain+"-tls", jsonData)
     Check(err)
+    defer resp.Body.Close()
     
     status := resp.StatusCode
     fmt.Println("Status GET:", status)
@@ -127,6 +128,7 @@ func main() {
         resp, err = K8sHTTPRequest(client, "POST", url, jsonData)
         fmt.Println("POST")
     }
+    defer resp.Body.Close()
 
     if err != nil {
         fmt.Println("Errore richiesta:", err)
