@@ -82,7 +82,7 @@ func CreateSecret(domain string, namespace string, fullchain string, privkey str
     }
 }
 
-func HTTPRequest(method string, url string, jsonData []byte) (*http.Response, error) {
+func K8sHTTPRequest(method string, url string, jsonData []byte) (*http.Response, error) {
     req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
     Check(err)
 
@@ -137,18 +137,18 @@ func main() {
 
     url := "https://"+kubernetesHost+":"+kubernetePort+"/api/v1/namespaces/"+namespace+"/secrets/"
 
-    resp, err := HTTPRequest("GET", url+domain+"-tls", jsonData)
+    resp, err := K8sHTTPRequest("GET", url+domain+"-tls", jsonData)
     Check(err)
     status := resp.StatusCode
     fmt.Println(status)
 
     if status == 200 {
-        resp, err := HTTPRequest("PUT", url+domain+"-tls", jsonData)
+        resp, err := K8sHTTPRequest("PUT", url+domain+"-tls", jsonData)
         Check(err)
         fmt.Println(resp.StatusCode)
         fmt.Println("PUT")
     } else {
-        resp, err := HTTPRequest("POST", url, jsonData)
+        resp, err := K8sHTTPRequest("POST", url, jsonData)
         Check(err)
         fmt.Println(resp.StatusCode)
         fmt.Println("POST")
