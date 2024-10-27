@@ -5,7 +5,7 @@ import (
     "net/http"
     "crypto/tls"
     "crypto/x509"
-    "io"
+    // "io"
     "bytes"
     "encoding/json"
     "time"
@@ -35,7 +35,6 @@ func Check(e error) {
 }
 
 func GetCert(domain string, filename string) (string, error){
-    
     certFilePath := "./etc/letsencrypt/live/"+domain+"/"+filename+".pem"
     cert, err := os.ReadFile(certFilePath)
     
@@ -43,7 +42,6 @@ func GetCert(domain string, filename string) (string, error){
 }
 
 func GetNamespace()(string, error){
-    
     namespaceFilePath := "./var/run/secrets/kubernetes.io/serviceaccount/namespace"
     namespace, err := os.ReadFile(namespaceFilePath)
     
@@ -51,7 +49,6 @@ func GetNamespace()(string, error){
 }
 
 func GetCA()(string, error){
-    
     caCertFilePath := "./var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     caCert, err := os.ReadFile(caCertFilePath)
     
@@ -59,71 +56,15 @@ func GetCA()(string, error){
 }
 
 func GetServiceAccountToken()(string, error){
-    
     tokenFilePath := "./var/run/secrets/kubernetes.io/serviceaccount/token"
     token, err := os.ReadFile(tokenFilePath)
     
     return string(token), err
 }
 
-func K8sSecretRequest(method string, url string,jsonpath bytes, token string, ca string) (error){
-    req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-
-    if err != nil {
-        return err
-    }
-
-    req.Header.Set("Accept", "application/json")
-    req.Header.Set("Authorization", "Bearer "+token)
-
-    caCert := []byte(ca)
-    caCertPool := x509.NewCertPool()
-    caCertPool.AppendCertsFromPEM(caCert)
-
-    client := &http.Client{
-        Transport: &http.Transport{
-            TLSClientConfig: &tls.Config{
-                RootCAs: caCertPool,
-            },
-        },
-    }
-
-    resp, err := client.Do(req)
-
-    if err != nil {
-        return err
-    }
-
-    defer resp.Body.Close()
-
-    body, err := io.ReadAll(resp.Body)
-
-    if err != nil {
-        return err
-    }
-    
-    fmt.Println(string(body))
-}
-
-func main() {
-
-    os.Setenv("DOMAIN", "www.example.com")
-    os.Setenv("KUBERNETES_SERVICE_HOST", "127.0.0.1")
-    os.Setenv("KUBERNETES_SERVICE_PORT_HTTPS", "44093")
-    
-
-    domain := os.Getenv("DOMAIN")
-    fullchain, err:=GetCert(domain,"fullchain")
-    Check(err)
-    privkey, err := GetCert(domain,"privkey")
-    Check(err)
-    
-    namespace, err := GetNamespace();
-    Check(err)
-
+func CreateSecret(domain string, namespace string, fullchain string, privkey string) (Secret) {
     expiration_certs := time.Now().AddDate(0, 0, 90).Format(time.RFC3339)
-
-    secret := Secret{
+    return Secret{
         APIVersion: "v1",
         Kind:       "Secret",
         Metadata: Metadata{
@@ -139,19 +80,77 @@ func main() {
             "tls.key": base64.StdEncoding.EncodeToString([]byte(privkey)), 
         },
     }
+}
+
+func HTTPRequest(method string, url string, jsonData []byte) (*http.Response, error) {
+    req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+    Check(err)
+
+    req.Header.Set("Content-Type", "application/json")
+    token, err := GetServiceAccountToken()
+    Check(err)
+    req.Header.Set("Authorization", "Bearer "+token)
+
+    ca, err := GetCA()
+    Check(err)
+    caCert := []byte(ca)
+    caCertPool := x509.NewCertPool()
+    caCertPool.AppendCertsFromPEM(caCert)
+
+    client := &http.Client{
+        Transport: &http.Transport{
+            TLSClientConfig: &tls.Config{
+                RootCAs: caCertPool,
+            },
+        },
+    }
+
+    resp, err := client.Do(req)
+    Check(err)
+
+    defer resp.Body.Close()
+
+    return resp, err
+}
+
+func main() {
+    os.Setenv("DOMAIN", "www.example.com")
+    os.Setenv("KUBERNETES_SERVICE_HOST", "127.0.0.1")
+    os.Setenv("KUBERNETES_SERVICE_PORT_HTTPS", "44093")
+
+    domain := os.Getenv("DOMAIN")
+    fullchain, err:=GetCert(domain,"fullchain")
+    Check(err)
+    privkey, err := GetCert(domain,"privkey")
+    Check(err)
+    
+    namespace, err := GetNamespace();
+    Check(err)
+
+    secret := CreateSecret(domain, namespace, fullchain, privkey)
 
     jsonData, err := json.Marshal(secret)
     Check(err)
 
     kubernetesHost := os.Getenv("KUBERNETES_SERVICE_HOST")
     kubernetePort := os.Getenv("KUBERNETES_SERVICE_PORT_HTTPS")
+
     url := "https://"+kubernetesHost+":"+kubernetePort+"/api/v1/namespaces/"+namespace+"/secrets/"
 
-    token, err := GetServiceAccountToken()
+    resp, err := HTTPRequest("GET", url+domain+"-tls", jsonData)
     Check(err)
-    ca, err := GetCA()
-    Check(err)
+    status := resp.StatusCode
+    fmt.Println(status)
 
-    err = K8sSecretRequest()
-    Check(err)
+    if status == 200 {
+        resp, err := HTTPRequest("PUT", url+domain+"-tls", jsonData)
+        Check(err)
+        fmt.Println(resp.StatusCode)
+        fmt.Println("PUT")
+    } else {
+        resp, err := HTTPRequest("POST", url, jsonData)
+        Check(err)
+        fmt.Println(resp.StatusCode)
+        fmt.Println("POST")
+    }
 }    
