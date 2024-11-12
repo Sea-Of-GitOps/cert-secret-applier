@@ -20,6 +20,11 @@
     - [ ] Role Binding
   - [ ] values
 
+## Addictional
+  - [ ] Refactor Software (Design Pattern)
+  - [ ] test
+  - [ ] k8s probes
+
 ## Authors
 - hershellayton95 (Filippo Di Marco)
 - mayday (Luca Maggio)
