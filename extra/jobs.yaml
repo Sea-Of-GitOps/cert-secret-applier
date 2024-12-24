@@ -1,0 +1,124 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: letsencrypt-job
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      serviceAccountName: letsencrypt-sa
+      initContainers:
+      - name: fake-certbot
+        image: alpine:3.16
+        command: ["sh", "-c", "apk add --no-cache openssl bash && . ./app/fake-certbot.sh"]
+        envFrom:
+          - configMapRef:
+              name: letsencrypt-cm
+        volumeMounts:
+        - name: letsencrypt
+          mountPath: /etc/letsencrypt
+        - name: fake-certbot-cm
+          mountPath: /app
+      containers:
+      - name: secret-applier
+        image: duckdns-letsencrypt:0.0.3
+        envFrom:
+          - configMapRef:
+              name: letsencrypt-cm
+        volumeMounts:
+        - name: letsencrypt
+          mountPath: /etc/letsencrypt
+      restartPolicy: Never
+      volumes:
+      - name: letsencrypt
+        emptyDir: {}
+      - name: fake-certbot-cm
+        configMap:
+          name: fake-certbot-cm
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fake-certbot-cm
+data:
+  fake-certbot.sh: |
+    #!/bin/bash
+
+    # Base directory structure
+    BASE_DIR="/etc/letsencrypt"
+    LIVE_DIR="$BASE_DIR/live"
+    ARCHIVE_DIR="$BASE_DIR/archive"
+    CERTS_DIR="$BASE_DIR/certs"
+
+    # Initialize directories
+    initialize_directories() {
+        mkdir -p "$LIVE_DIR" "$ARCHIVE_DIR" "$CERTS_DIR"
+        echo "Directory structure initialized."
+    }
+
+    # Generate key and certificate
+    generate_certificate() {
+        DOMAIN=${DUCKDNS_DOMAIN}
+        if [ -z "$DOMAIN" ]; then
+            echo "Error: DUCKDNS_DOMAIN environment variable is not set."
+            exit 1
+        fi
+
+        DOMAIN_DIR="$LIVE_DIR/$DOMAIN"
+        mkdir -p "$DOMAIN_DIR"
+
+        # Generate private key
+        openssl genrsa -out "$DOMAIN_DIR/privkey.pem" 2048 2>/dev/null
+
+        # Generate a self-signed certificate
+        openssl req -new -x509 -key "$DOMAIN_DIR/privkey.pem" -out "$DOMAIN_DIR/fullchain.pem" \
+            -days 365 -subj "/CN=$DOMAIN" 2>/dev/null
+
+        echo "Certificate for $DOMAIN generated and saved in $DOMAIN_DIR."
+    }
+
+    # Run the program
+    initialize_directories
+    generate_certificate
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: letsencrypt-cm
+data:
+  DUCKDNS_DOMAIN: www.example.com
+
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: letsencrypt-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-creator
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: secret-creator-binding
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: letsencrypt-sa
+    namespace: default
+roleRef:
+  kind: Role
+  name: secret-creator
+  apiGroup: rbac.authorization.k8s.io
