@@ -5,7 +5,7 @@ kubernetes:
   service:
     host: 127.0.0.1
     port:
-      https: 44093
+      https: 39199
 
 # logger
 logger:

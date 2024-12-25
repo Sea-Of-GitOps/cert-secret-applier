@@ -21,7 +21,9 @@ func Run(ctx context.Context) error {
 	}
 	logger.DebugCtx(ctx, "configuration", zap.Any("config", cfg))
 
-    app.Run(cfg)
+    if err := app.Run(cfg); err != nil {
+		return err
+	}
 
     return nil
 }

@@ -56,13 +56,15 @@ func Sync() error {
 }
 
 func appendRequestId(ctx context.Context, fields ...zap.Field) []zap.Field {
+	if ctx == nil {
+		return fields
+	}
 	requestId := ctx.Value(RequestIdKey)
 	if requestId != nil {
-		fields = append(fields, zap.String("requestId", fmt.Sprintf("%s", ctx.Value(RequestIdKey))))
+		fields = append(fields, zap.String("requestId", fmt.Sprintf("%s", requestId)))
 	}
 	return fields
 }
-
 func DebugCtx(ctx context.Context, message string, fields ...zap.Field) {
 	zap.L().Debug(message, appendRequestId(ctx, fields...)...)
 }
