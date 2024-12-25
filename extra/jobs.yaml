@@ -21,7 +21,7 @@ spec:
           mountPath: /app
       containers:
       - name: secret-applier
-        image: duckdns-letsencrypt:0.0.7
+        image: ghcr.io/sea-of-gitops/cert-secret-applier:v0.0.1
         envFrom:
           - configMapRef:
               name: letsencrypt-cm
@@ -90,6 +90,7 @@ metadata:
   name: letsencrypt-cm
 data:
   DUCKDNS_DOMAIN: www.example.com
+  LOGGER_LEVEL: info
 
 
 ---
