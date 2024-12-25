@@ -21,8 +21,7 @@ spec:
           mountPath: /app
       containers:
       - name: secret-applier
-        image: duckdns-letsencrypt:0.0.6
-        command: ["sh", "-c", "sleep 3600"]
+        image: duckdns-letsencrypt:0.0.7
         envFrom:
           - configMapRef:
               name: letsencrypt-cm

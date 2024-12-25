@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	certBasePath      = "./extra/etc/letsencrypt/live/"
-	namespaceFilePath = "./extra/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-	caCertFilePath    = "./extra/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	tokenFilePath     = "./extra/var/run/secrets/kubernetes.io/serviceaccount/token"
+	certBasePath      = "/etc/letsencrypt/live/"
+	namespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	caCertFilePath    = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	tokenFilePath     = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 type Secret struct {
