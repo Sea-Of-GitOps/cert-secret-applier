@@ -1,0 +1,12 @@
+duckdns:
+  domain: "www.example.com"
+
+kubernetes:
+  service:
+    host: 127.0.0.1
+    port:
+      https: 39199
+
+# logger
+logger:
+  level: debug
