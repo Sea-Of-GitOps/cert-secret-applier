@@ -1,0 +1,98 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: secret-applier-job
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      serviceAccountName: secret-applier-serviceaccount
+      initContainers:
+      - name: certbot-dns-duckdns
+        image: ghcr.io/infinityofspace/certbot_dns_duckdns:v1.5
+        args:
+        - certonly
+        - "--non-interactive"
+        - "--agree-tos"
+        - "--email"
+        - "$(ORGANIZATION_EMAIL)"
+        - "--preferred-challenges"
+        - dns
+        - "--authenticator"
+        - dns-duckdns
+        - "--dns-duckdns-token"
+        - "$(DUCKDNS_TOKEN)"
+        - "--dns-duckdns-propagation-seconds"
+        - "60"
+        - "-d"
+        - "*.$(DUCKDNS_DOMAIN)"
+        envFrom:
+          - configMapRef:
+              name: secret-applier-configmap
+          - secretRef:
+              name: secret-applier-secret
+        volumeMounts:
+        - name: letsencrypt
+          mountPath: /etc/letsencrypt
+      containers:
+      - name: secret-applier
+        image: ghcr.io/sea-of-gitops/cert-secret-applier:v0.0.1
+        envFrom:
+          - configMapRef:
+              name: secret-applier-configmap
+        volumeMounts:
+        - name: letsencrypt
+          mountPath: /etc/letsencrypt
+      restartPolicy: OnFailure
+      volumes:
+      - name: letsencrypt
+        emptyDir: {}
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secret-applier-configmap
+data:
+  DUCKDNS_DOMAIN: example.duckdns.org
+  LOGGER_LEVEL: info
+  ORGANIZATION_EMAIL: ""
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-applier-secret
+type: Opaque
+data:
+  DUCKDNS_TOKEN: ""
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secret-applier-serviceaccount
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-applier-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: secret-creator-binding
+subjects:
+  - kind: ServiceAccount
+    name: secret-applier-serviceaccount
+roleRef:
+  kind: Role
+  name: secret-applier-role
+  apiGroup: rbac.authorization.k8s.io
+

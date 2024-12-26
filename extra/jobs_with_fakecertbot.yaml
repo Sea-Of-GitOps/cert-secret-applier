@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: letsencrypt-job
+  name: secret-applier-job
 spec:
   ttlSecondsAfterFinished: 100
   template:
